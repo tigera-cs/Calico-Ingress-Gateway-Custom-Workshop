@@ -1,0 +1,24 @@
+# Gateway (listener HTTPS)
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: mtls-gateway
+  namespace: default
+spec:
+  gatewayClassName: tigera-gateway-class
+  listeners:
+  - name: https
+    protocol: HTTPS
+    port: 443
+    hostname: terminate.example.com
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: terminate-example-tls-secret   # Your server TLS secret (must exist)
+    allowedRoutes:
+      namespaces:
+        from: Selector
+        selector:
+          matchLabels:
+            kubernetes.io/metadata.name: uc3-custom
+

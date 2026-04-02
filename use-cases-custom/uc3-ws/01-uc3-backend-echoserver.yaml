@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: uc3-custom
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: terminate-echoserver
+  namespace: uc3-custom
+  labels:
+    run: terminate-echoserver
+spec:
+  ports:
+    - port: 443
+      targetPort: 8443
+      protocol: TCP
+  selector:
+    run: terminate-echoserver
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uc3-backend
+  namespace: uc3-custom
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: uc3-backend
+  template:
+    metadata:
+      labels:
+        app: uc3-backend
+    spec:
+      serviceAccountName: uc3-backend
+      containers:
+      - name: uc3-backend
+        image: ealen/echo-server:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace

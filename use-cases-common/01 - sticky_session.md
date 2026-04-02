@@ -1,0 +1,236 @@
+# Calico Ingress Gateway - Sticky session with Session Persistence Envoy Route
+
+### Table of Contents
+
+* [Welcome!](#welcome)
+* [Overview](#overview)
+* [High Level Tasks](#high-level-tasks)
+* [Diagram](#diagram)
+* [Demo](#demo)
+* [Clean-up](#clean-up)
+
+
+### Welcome!
+
+Welcome to the **Calico Ingress Gateway Instructor Led Workshop**. 
+
+The Calico Ingress Gateway Workshop aims to explain the kubernetes' and IngressAPI native limitations, the differences between IngressAPI and GatewayAPI and the most common use cases where Calico Ingress Gateway can solve.
+
+We hope you enjoyed the presentation! Feel free to download the slides:
+- [Calico Ingress Gateway - Introduction](etc/01%20-%20Calico%20Ingress%20Gateway%20-%20Introduction.pdf)
+- [Calico Ingress Gateway - Capabilities](etc/02%20%20-%20Calico%20Ingress%20Gateway%20-%20Capabilities.pdf)
+- [Calico Ingress Gateway - Migration](etc/03%20-%20Calico%20Ingress%20Gateway%20-%20Migration%20From%20Ingress.pdf)
+
+---
+
+### Overview
+
+Session Persistence allows client requests to be consistently routed to the same backend service instance. This ensures that the user’s state or context is maintained across multiple requests, which is essential for applications that rely on session-specific data.
+
+In Kubernetes with Calico Ingress Gateway, session persistence can be implemented using a session identifier, such as a cookie or a custom header. This mechanism ensures that all requests from a particular client are routed to the same pod for the duration of their session, preventing data inconsistencies and improving overall user experience.
+
+#### Real-World Use Cases
+
+- **User Authentication:** Login sessions often require that a user’s requests are handled by the same backend instance to maintain session tokens and authentication state.
+
+- **E-Commerce Shopping Carts:** Ensures that items added to a cart are consistently available across pages without requiring frequent database lookups.
+
+- **Online Gaming or Collaboration Tools:** Maintains game state or live document sessions, avoiding interruptions caused by switching backend instances.
+
+- **Personalized Dashboards:** Applications that generate dynamic, session-specific content benefit from persistent routing to reduce latency and improve performance.
+
+Use session persistence when your application is stateful and requires explicit control over the session lifecycle, as it helps maintain continuity, reduces errors, and enhances the end-user experience.
+
+---
+
+### High Level Tasks
+
+- Create a deployment named Backend which we will use to test sticky session / session persistence. The deployment will have 4 replicas.
+- Create a Gateway resource named "sticky-session-gateway" using the "tigera-gateway-class"
+- Create the http route to configure the session persistence 
+- Retrieve the external IP of the gateway and **test**
+
+### Diagram
+
+Coming Soon in v2
+
+### Demo
+
+#### 1. Create a deployment named `Backend` which we will use to test sticky session / session persistence. The deployment will have 4 replicas.
+
+  ```
+  kubectl apply -f - <<EOF
+  apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: backend
+  ---
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: backend
+    labels:
+      app: backend
+      service: backend
+  spec:
+    ports:
+      - name: http
+        port: 3000
+        targetPort: 3000
+    selector:
+      app: backend
+  ---
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: backend
+  spec:
+    replicas: 4
+    selector:
+      matchLabels:
+        app: backend
+        version: v1
+    template:
+      metadata:
+        labels:
+          app: backend
+          version: v1
+      spec:
+        serviceAccountName: backend
+        containers:
+          - image: gcr.io/k8s-staging-gateway-api/echo-basic:v20231214-v1.0.0-140-gf544a46e
+            imagePullPolicy: IfNotPresent
+            name: backend
+            ports:
+              - containerPort: 3000
+            env:
+              - name: POD_NAME
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.name
+              - name: NAMESPACE
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.namespace
+  EOF
+  ```
+
+#### 2. Create a Gateway resource named "sticky-session-gateway" using the "tigera-gateway-class"
+
+  ```
+  kubectl apply -f - <<EOF
+  apiVersion: gateway.networking.k8s.io/v1
+  kind: Gateway
+  metadata:
+    name: sticky-session-gateway
+  spec:
+    gatewayClassName: tigera-gateway-class
+    listeners:
+      - name: http
+        protocol: HTTP
+        port: 80
+  EOF
+  ```
+
+#### 3. Create the http route to configure the session persistence logic
+  ```
+  kubectl apply -f - <<EOF
+  apiVersion: gateway.networking.k8s.io/v1beta1
+  kind: HTTPRoute
+  metadata:
+    name: header
+  spec:
+    parentRefs:
+      - name: sticky-session-gateway
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - name: backend
+            port: 3000
+        sessionPersistence:
+          sessionName: Session-A
+          type: Header
+          absoluteTimeout: 10s
+  EOF
+  ```
+
+#### 4. Wait for 30 seconds to allow services and gateway to be ready
+
+  ```
+  sleep 30
+  ```
+
+#### 5. Retrieve the external IP of the gateway
+
+  ```
+  export GATEWAY_STICKY_DEMO=$(kubectl get gateway/sticky-session-gateway -o jsonpath='{.status.addresses[0].value}')
+  echo "GATEWAY_STICKY_DEMO is: $GATEWAY_STICKY_DEMO"
+  ```
+
+#### 6. Test
+
+From the bastion, send a request to the gateway to get an `header`
+
+  ```
+  HEADER=$(curl --verbose http://$GATEWAY_STICKY_DEMO/get 2>&1 | grep "session-a" | awk '{print $3}')
+  echo "HEADER is: $HEADER"
+  ```
+
+Send 5 requests to the gateway using that `header`
+  ```
+  for i in `seq 5`; do
+      curl -H "Session-A: $HEADER" http://$GATEWAY_STICKY_DEMO/get 2>/dev/null | grep pod
+  done
+  ```
+
+As a result, you should see all responses coming from the same pod. Sample:
+
+  ```
+  "pod": "backend-765694d47f-wn8hp"
+  "pod": "backend-765694d47f-wn8hp"
+  "pod": "backend-765694d47f-wn8hp"
+  "pod": "backend-765694d47f-wn8hp"
+  "pod": "backend-765694d47f-wn8hp"
+  ```
+
+Remove the header and test again:
+
+  ```
+  for i in `seq 5`; do
+      curl http://$GATEWAY_STICKY_DEMO/get 2>/dev/null | grep pod
+  done
+  ```
+
+Sample of output:
+
+  ```
+  tigera@bastion:~$ for i in `seq 5`; do
+  >       curl http://$GATEWAY_STICKY_DEMO/get 2>/dev/null | grep pod
+  >   done
+  "pod": "backend-765694d47f-whjc9"
+  "pod": "backend-765694d47f-9s262"
+  "pod": "backend-765694d47f-4fm7c"
+  "pod": "backend-765694d47f-wn8hp"
+  "pod": "backend-765694d47f-4fm7c"
+  ```
+
+### Clean-up
+
+#### 1. Delete app, service, serviceAccount, HTTPRoute and Gateway
+
+  ```
+  kubectl delete ServiceAccount backend
+  kubectl delete service backend
+  kubectl delete deployment backend
+  kubectl delete gateway sticky-session-gateway
+  kubectl delete HTTPRoute header
+  ```
+
+===
+> **Congratulations! You have completed `Calico Ingress Gateway Workshop - Sticky session with Session Persistence Envoy Route`!**
+
+---
+**Credits:** Portions of this guide are based on or derived from the [Envoy Gateway documentation](https://gateway.envoyproxy.io/docs/tasks/traffic/session-persistence/).

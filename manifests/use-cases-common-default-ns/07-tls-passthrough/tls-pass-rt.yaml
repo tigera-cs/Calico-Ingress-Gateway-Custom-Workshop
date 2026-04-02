@@ -1,0 +1,16 @@
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TLSRoute
+metadata:
+  name: tls-passthrough
+spec:
+  parentRefs:
+    - name: tls-passthrough-gateway
+  hostnames:
+    - "passthrough.example.com"
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: passthrough-echoserver
+          port: 443
+          weight: 1

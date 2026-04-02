@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: uc1-custom
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: uc1-backend
+  namespace: uc1-custom
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: uc1-backend
+  namespace: uc1-custom
+  labels:
+    app: uc1-backend
+    service: uc1-backend
+spec:
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 80
+  selector:
+    app: uc1-backend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uc1-backend
+  namespace: uc1-custom
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: uc1-backend
+  template:
+    metadata:
+      labels:
+        app: uc1-backend
+    spec:
+      serviceAccountName: uc1-backend
+      containers:
+      - name: uc1-backend
+        image: ealen/echo-server:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace

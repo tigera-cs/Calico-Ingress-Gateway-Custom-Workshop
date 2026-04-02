@@ -1,0 +1,5 @@
+# create a GatewayAPI resource 
+apiVersion: operator.tigera.io/v1
+kind: GatewayAPI
+metadata:
+  name: default

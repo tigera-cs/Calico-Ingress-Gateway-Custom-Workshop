@@ -1,0 +1,33 @@
+## handler session-affinity
+
+## Unrecognized Annotations
+# The following NGINX annotations were not recognized by the converter:
+#  "nginx.ingress.kubernetes.io/session-cookie-expires"
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: uc2-custom
+  namespace: uc2-custom
+  annotations:
+    cloud.rbc.com/full-domain: "true"
+    external-dns.alpha.kubernetes.io/exclude: "true"
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/affinity: cookie
+    nginx.ingress.kubernetes.io/affinity-mode: persistent
+    nginx.ingress.kubernetes.io/session-cookie-change-on-failure: "true"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "14400"  # ← Not converted by Seth
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "14400"
+    nginx.ingress.kubernetes.io/session-cookie-name: route
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-service
+                port:
+                  number: 80

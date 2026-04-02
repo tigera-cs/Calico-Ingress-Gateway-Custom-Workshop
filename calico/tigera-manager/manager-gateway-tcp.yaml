@@ -1,0 +1,12 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: manager-gateway
+  namespace: tigera-manager
+spec:
+  gatewayClassName: tigera-gateway-class
+  listeners:
+    - name: manager
+      port: 9443
+      protocol: TCP
+

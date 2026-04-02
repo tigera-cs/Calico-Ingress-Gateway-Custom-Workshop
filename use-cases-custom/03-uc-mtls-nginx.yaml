@@ -1,0 +1,35 @@
+## Handler 
+
+## Unrecognized Annotations
+# The following NGINX annotations were not recognized by the converter:
+# nginx.ingress.kubernetes.io/proxy-next-upstream-timeout
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: uc3-custom
+  namespace: uc3-custom
+  annotations:
+    external-dns.alpha.kubernetes.io/target: blu-service.canadacentral.aks.dev.c1.xyz.com
+    nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream: "true"
+    nginx.ingress.kubernetes.io/auth-tls-secret: ingress-mtls/ca-secret
+    nginx.ingress.kubernetes.io/auth-tls-verify-client: optional_no_ca
+    nginx.ingress.kubernetes.io/auth-tls-verify-depth: "1"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header X_FORWARDED_CLIENT_CERT $ssl_client_escaped_cert;
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - app.example.com
+      secretName: uc3-custom-tls   # ← Change this to your actual TLS secret name
+  rules:
+    - host: app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-service
+                port:
+                  number: 80

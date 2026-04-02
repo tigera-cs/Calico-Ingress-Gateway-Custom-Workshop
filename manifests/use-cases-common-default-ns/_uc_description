@@ -1,0 +1,56 @@
+
+# --- UC1 - Sticky session with Session Persistence 
+session persistence can be implemented using a session identifier, such as a cookie or a custom header. 
+This mechanism ensures that all requests from a particular client are routed to the same pod for the duration of their session, preventing data inconsistencies.
+
+# --- UC2 - Round Robin Load Balancing
+round-robin is one of the default load balancing strategies used by Envoy to forward requests to backend pods. 
+sending each new request to the next pod in line, ensuring a balanced distribution without overloading any single instance.
+
+# --- UC3 - Consistent Hash Load Balancing
+consistent hashing can be configured so that requests are distributed based on a hash of a key (like a cookie, HTTP header, or client IP). 
+Envoy calculates the hash and routes each request to a specific backend, ensuring that the same client consistently lands on the same pod.
+
+# --- UC4 - Path-Based routing with HTTPRoute
+Calico Ingress Gateway, uses the HTTPRoute resource to define path-based routing rules. 
+You can match on path prefixes, exact paths, or regex-like patterns, and direct requests to the appropriate backend service
+
+# --- UC5 - Canary Deployment with Traffic Splitting
+using Calico Ingress Gateway, canary deployments can be implemented through traffic splitting. 
+This means you configure routing rules (e.g., via HTTPRoute) to send a specific percentage of traffic to the new version (the canary),
+... and the rest to the stable version. 
+Over time, the percentage can be increased as confidence in the new version grows.
+
+# --- UC6 - TCP Routing
+Calico Ingress Gateway supports TCP routing via Kubernetes Gateway API (e.g., TCPRoute), enabling layer 4 (L4) routing for TCP traffic. 
+This allows you to define rules that forward TCP connections to specific backends (like a DB service)
+
+# --- ingress2gateway 
+Now that we have covered the use cases for the GatewayAPI, I would like to switch the gear to migration topic and show you 
+a real migration example. 
+I am going to pick the canary example and I will run the migration tool
+
+Here, on this cluster I have many ingress controller resources, but I will pick the canary one.
+Let's narrow it down to canary ingress. 
+
+
+The tool to look for Ingress resources managed by the ingress-nginx controller and convert them into Gateway API equivalent resources.
+
+~/scripts/ingress2gateway/ingress2gateway print --namespace uc-canary --providers=ingress-nginx
+
+~/scripts/ingress2gateway/ingress2gateway print --all-namespaces --providers=ingress-nginx
+
+
+## Links
+# Git repo
+https://github.com/tigera-cs/Calico-Ingress-Gateway-Instructor-Led-Workshop/tree/main
+
+# ingress2gayetway tool
+https://github.com/kubernetes-sigs/ingress2gateway
+https://github.com/kubernetes-sigs/ingress2gateway/blob/main/pkg/i2gw/providers/ingressnginx/README.md # <-- new support
+
+#  Envoy Gateway documentation
+https://gateway.envoyproxy.io/docs/install/migrating-to-envoy/
+
+# Tutorial: Launch a canary deployment with Calico Ingress Gateway
+https://docs.tigera.io/calico/latest/networking/ingress-gateway/tutorial-ingress-gateway-canary
