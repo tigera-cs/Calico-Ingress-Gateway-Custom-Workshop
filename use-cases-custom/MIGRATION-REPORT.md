@@ -265,9 +265,9 @@ Once all traffic is flowing through Envoy Gateway:
 # Remove Ingress resources in online-store
 kubectl delete ingress admin-panel -n online-store
 kubectl delete ingress api-versioned -n online-store
-kubectl delete ingress rbc-uc1-longrunning -n online-store
-kubectl delete ingress rbc-uc2-sticky -n online-store
-kubectl delete ingress rbc-uc3-mtls -n online-store
+kubectl delete ingress uc1-longrunning -n online-store
+kubectl delete ingress uc2-sticky -n online-store
+kubectl delete ingress uc3-mtls -n online-store
 kubectl delete ingress storefront -n online-store
 ```
 
