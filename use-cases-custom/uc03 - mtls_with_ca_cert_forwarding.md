@@ -188,6 +188,7 @@ EOF
 
 #### 4. Create the HTTPRoute and ClientTrafficPolicy with Header Forwarding
 ```bash
+kubectl apply -f - <<EOF
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: ClientTrafficPolicy
 metadata:

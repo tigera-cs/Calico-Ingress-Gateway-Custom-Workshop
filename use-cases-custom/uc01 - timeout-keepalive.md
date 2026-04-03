@@ -160,6 +160,7 @@ annotations:
 #### 3. Create a Gateway resource using the "tigera-gateway-class"
 
   ```
+  kubectl apply -f - <<EOF
   apiVersion: gateway.networking.k8s.io/v1
   kind: Gateway
   metadata:
