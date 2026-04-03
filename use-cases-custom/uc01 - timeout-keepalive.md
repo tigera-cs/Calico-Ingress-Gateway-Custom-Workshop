@@ -191,8 +191,8 @@ annotations:
 
 
 #### 4. Create the HTTPRoute and Traffic Policy
-  ```
-  kubectl apply -f - <<EOF
+```yaml
+kubectl apply -f - <<EOF
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: ClientTrafficPolicy
 metadata:
@@ -221,7 +221,6 @@ spec:
   - group: gateway.networking.k8s.io
     kind: HTTPRoute
     name: keepalive-timeout-route
-
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -245,8 +244,7 @@ spec:
     timeouts:
       request: 3600s
       backendRequest: 590s
-  EOF
-  ```
+EOF
 
 #### 5. Wait for 30 seconds to allow services and gateway to be ready
 
