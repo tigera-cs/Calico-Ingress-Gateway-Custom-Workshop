@@ -35,7 +35,7 @@ In this scenario, the Gateway acts as a security gatekeeper: it terminates the T
 - Generate Certificates and Kubernetes Secrets for the Gateway and Client CA.
 - Create Namespace + Backend (Deployment + Service) in `uc3-custom`.
 - Create a dedicated HTTPS Gateway in the `default` namespace (Port 443) with `frontendValidation`.
-- Create an HTTPRoute with a `RequestHeaderModifier` filter to inject client certificate details.
+- Create an HTTPRoute and a `ClientTrafficPolicy` with a `xForwardedClientCert` filter to inject client certificate details.
 
 ---
 
@@ -88,27 +88,31 @@ In this scenario, the Gateway acts as a security gatekeeper: it terminates the T
 First, we create the Server certificate for the Gateway and the CA/Client certificate pair for the mTLS handshake.
 
 ```bash
-# A. Generate Gateway Server Certificate
-openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 \
-  -subj '/CN=terminate.example.com/O=Example Inc.' \
-  -keyout server.key -out server.crt
+  # Generate certificates in current directory
+  echo "Generating certificates..."
 
-kubectl create secret tls terminate-example-tls-cert \
-  --key=server.key --cert=server.crt
+  # 1. CA Certificate
+  openssl req -x509 -newkey rsa:2048 -keyout ca.key -out ca.crt \
+    -days 365 -nodes -subj "/CN=Test CA" 2>/dev/null
 
-# B. Generate Client CA and Client Certificate
-openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 \
-  -subj '/CN=ExampleClientCA/O=Example Inc.' \
-  -keyout ca.key -out ca.crt
+  # 2. Server Certificate (for the Gateway)
+  openssl req -newkey rsa:2048 -keyout server.key -out server.csr \
+    -nodes -subj "/CN=terminate.example.com" 2>/dev/null
+  openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key \
+    -CAcreateserial -out server.crt -days 365 2>/dev/null
 
-openssl req -newkey rsa:2048 -nodes -keyout client.key \
-  -subj '/CN=my-client/O=Example Inc.' -out client.csr
+  # 3. Client Certificate (for testing with --cert / --key)
+  openssl req -newkey rsa:2048 -keyout client.key -out client.csr \
+    -nodes -subj "/CN=test-client/O=test-org" 2>/dev/null
+  openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key \
+    -CAcreateserial -out client.crt -days 365 2>/dev/null
 
-openssl x509 -req -sha256 -days 365 -in client.csr \
-  -CA ca.crt -CAkey ca.key -set_serial 01 -out client.crt
+  # 4. Create Kubernetes resources
+  kubectl create secret tls terminate-example-tls-cert \
+    --cert=server.crt --key=server.key -n default
 
-# Create CA secret for Gateway validation
-kubectl create secret generic client-ca-cert --from-file=ca.crt=ca.crt
+  kubectl create configmap client-ca-cert \
+    --from-file=ca.crt=ca.crt -n default
 ```
 
 #### 2. Create the Backend Deployment
@@ -175,23 +179,39 @@ spec:
     tls:
       mode: Terminate
       certificateRefs:
-      - group: ""
-        kind: Secret
-        name: terminate-example-tls-cert
-      frontendValidation:
-        caCertificateRefs:
-        - group: ""
-          kind: Secret
-          name: client-ca-cert
+      - name: terminate-example-tls-cert
     allowedRoutes:
       namespaces:
         from: All
 EOF
 ```
 
-#### 4. Create the HTTPRoute with Header Forwarding
+#### 4. Create the HTTPRoute and ClientTrafficPolicy with Header Forwarding
 ```bash
-kubectl apply -f - <<EOF
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: mtls-client-cert-forward
+  namespace: default
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: mtls-gateway
+  tls:
+    clientValidation:
+      caCertificateRefs:
+      - kind: ConfigMap
+        group: ""
+        name: client-ca-cert
+  headers:
+    xForwardedClientCert:
+      mode: SanitizeSet
+      certDetailsToAdd:
+      - Subject
+      - URI
+      - DNS
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -204,15 +224,7 @@ spec:
   hostnames:
   - "terminate.example.com"
   rules:
-  - filters:
-    - type: RequestHeaderModifier
-      requestHeaderModifier:
-        add:
-        - name: X-Client-Cert-Present
-          value: "true"
-        - name: X-Forwarded-Client-Cert
-          value: "Subject=\"%DOWNSTREAM_PEER_SUBJECT%\";Hash=%DOWNSTREAM_PEER_FINGERPRINT_256%"
-    backendRefs:
+  - backendRefs:
     - name: uc3-backend
       port: 3000
 EOF
@@ -236,13 +248,13 @@ curl -v -k --resolve "terminate.example.com:443:$GATEWAY_IP" \
 
 ### Key Observations
 
-- **Handshake Verification**: The Gateway successfully performs a full mTLS handshake. Without the `--cert` and `--key` flags, the connection is rejected at the TLS layer.
-- **Header Injection**: The `HTTPRoute` successfully injects `x-client-cert-present: true` into the request received by the backend.
+- **Handshake Verification**: The Gateway successfully performs a full mTLS handshake.
+- **Header Injection**: The `ClientTrafficPolicy` successfully injects `x-client-cert-present: true` into the request received by the backend.
 - **Protocol Security**: Identity verification is handled entirely by the Calico Ingress (Envoy), offloading complex cryptographic validation from the application code.
 
 ### Configuration Used
 - **Gateway `frontendValidation`**: Establishes the trust anchor by referencing the `client-ca-cert` secret.
-- **HTTPRoute `RequestHeaderModifier`**: Replaces custom NGINX snippets with a declarative filter to signal mTLS status to upstreams.
+- **ClientTrafficPolicy `RequestHeaderModifier`**: Replaces custom NGINX snippets with a declarative filter to signal mTLS status to upstreams.
 
 ---
 
@@ -253,10 +265,14 @@ By implementing mTLS via the Gateway API, we have centralized identity managemen
 
 ### Clean-up
 ```bash
-kubectl delete ns uc3-custom
-kubectl delete gateway mtls-gateway -n default
-kubectl delete secret terminate-example-tls-cert client-ca-cert -n default
-rm server.crt server.key ca.crt ca.key client.crt client.key client.csr
+kubectl delete gateway mtls-gateway -n default --ignore-not-found
+kubectl delete clienttrafficpolicy mtls-optional-policy -n default --ignore-not-found
+kubectl delete httproute mtls-route -n uc3-custom --ignore-not-found
+kubectl delete namespace uc3-custom --ignore-not-found
+
+# Optional: Clean certificates
+kubectl delete secret terminate-example-tls-cert -n default --ignore-not-found
+kubectl delete configmap client-ca-cert -n default --ignore-not-found
 ```
 
 ===

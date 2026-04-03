@@ -51,7 +51,7 @@ annotations:
 
 
 ### Diagram
-
+```text
     +-------------------------------------------------------------+
     |                      Kubernetes Cluster                     |
     |                                                             |
@@ -68,10 +68,10 @@ annotations:
     |                                                             |  
     |                                                             |
     +-------------------------------------------------------------+
-              ↑ HTTP Traffic                             
+              ↑ HTTP /HTTPS Traffic                             
               │ (with Keep-Alive + Long Timeouts)                
         External Clients 
-
+```
 ---
 
 **Key Points**:
@@ -81,7 +81,19 @@ annotations:
 
 ### Demo
 
-#### 1. Create a deployment named `Backend` which we will use to test sticky session / session persistence. The deployment will have 4 replicas.
+#### 1. Generate certificate
+  ```
+  # Generate the key and cert
+  openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 \
+    -subj '/CN=app.example.com/O=MyOrg' \
+    -keyout app-example-tls.key -out app-example-tls.crt
+
+  # Create the Kubernetes Secret in the same namespace as the Gateway (default)
+  kubectl create secret tls app-example-tls-cert \
+    --key=app-example-tls.key \
+    --cert=app-example-tls.crt
+  ```
+#### 2. Create a deployment named `Backend` which we will use to test sticky session / session persistence. The deployment will have 4 replicas.
 
   ```
   kubectl apply -f - <<EOF
@@ -145,10 +157,9 @@ annotations:
   EOF
   ```
 
-#### 2. Create a Gateway resource using the "tigera-gateway-class"
+#### 3. Create a Gateway resource using the "tigera-gateway-class"
 
   ```
-  kubectl apply -f - <<EOF
   apiVersion: gateway.networking.k8s.io/v1
   kind: Gateway
   metadata:
@@ -163,82 +174,93 @@ annotations:
       allowedRoutes:
         namespaces:
           from: All
+    - name: uc1-https
+      protocol: HTTPS
+      port: 443
+      hostname: "app.example.com"
+      tls:
+        mode: Terminate
+        certificateRefs:
+        - name: app-example-tls-cert
+      allowedRoutes:
+        namespaces:
+          from: All
   EOF
   ```
 
 
-#### 3. Create the HTTPRoute and Traffic Policy
+#### 4. Create the HTTPRoute and Traffic Policy
   ```
   kubectl apply -f - <<EOF
-  apiVersion: gateway.envoyproxy.io/v1alpha1
-  kind: ClientTrafficPolicy
-  metadata:
-    name: client-keepalive-policy
-    namespace: default
-  spec:
-    targetRefs:
-    - group: gateway.networking.k8s.io
-      kind: Gateway
-      name: keepalive-timeout-gateway
-    tcpKeepalive:
-      idleTime: 750s
-      interval: 60s
-      probes: 3
-    timeout:
-      http:
-        idleTimeout: 3600s
-  ---
-  apiVersion: gateway.envoyproxy.io/v1alpha1
-  kind: BackendTrafficPolicy
-  metadata:
-    name: backend-timeout-policy
-    namespace: uc1-custom
-  spec:
-    targetRefs:
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      name: keepalive-timeout-route
-  ---
-  apiVersion: gateway.networking.k8s.io/v1
-  kind: HTTPRoute
-  metadata:
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: client-keepalive-policy
+  namespace: default
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: keepalive-timeout-gateway
+  tcpKeepalive:
+    idleTime: 750s
+    interval: 60s
+    probes: 3
+  timeout:
+    http:
+      idleTimeout: 3600s
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: backend-timeout-policy
+  namespace: uc1-custom
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
     name: keepalive-timeout-route
-    namespace: uc1-custom
-  spec:
-    parentRefs:
-    - name: keepalive-timeout-gateway
-      namespace: default
-      sectionName: uc1-http
-    hostnames:
-    - "app.example.com"
-    rules:
-    - matches:
-      - path:
-          type: PathPrefix
-          value: /
-      backendRefs:
-      - name: uc1-backend
-        port: 3000
-      timeouts:
-        request: 3600s
-        backendRequest: 590s
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: keepalive-timeout-route
+  namespace: uc1-custom
+spec:
+  parentRefs:
+  - name: keepalive-timeout-gateway
+    namespace: default
+  hostnames:
+  - "app.example.com"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: uc1-backend
+      port: 3000
+    timeouts:
+      request: 3600s
+      backendRequest: 590s
   EOF
   ```
 
-#### 4. Wait for 30 seconds to allow services and gateway to be ready
+#### 5. Wait for 30 seconds to allow services and gateway to be ready
 
   ```
   sleep 30
   ```
 
-#### 5. Retrieve the external IP of the gateway
+#### 6. Retrieve the external IP of the gateway
 
   ```
   export GATEWAY_EXTERNAL_IP=$(kubectl get gateway/keepalive-timeout-gateway -o jsonpath='{.status.addresses[0].value}')
   echo "GATEWAY_EXTERNAL_IP is: $GATEWAY_EXTERNAL_IP"
   ```
 
-### 6. Test
+### 7. Test
 
 ### Timeout
 
@@ -252,16 +274,16 @@ Copy and paste this as your demo commands:
 
 
     echo "=== 1. Fast Request (should be quick) ==="
-    time curl -v -H "Host: app.example.com" http://$GATEWAY_EXTERNAL_IP/ \
-      | jq -r '.environment.POD_NAME'
+    
+    time curl -v -k --resolve app.example.com:443:$GATEWAY_EXTERNAL_IP \
+     https://app.example.com/get 2>/dev/null | jq -r '.environment.POD_NAME'
 
     sleep 5
     echo -e "\n=== 2. Long Request - 60 second delay (proving backendRequest timeout) ==="
     echo "This should take approximately 60 seconds..."
-    time curl -v --max-time 120 \
-      -H "Host: app.example.com" \
-      "http://$GATEWAY_EXTERNAL_IP/?echo_time=60000" \
-      | jq -r '.environment.POD_NAME'
+    
+    time curl -v -k --max-time 120 --resolve app.example.com:443:$GATEWAY_EXTERNAL_IP \
+    "https://app.example.com/?echo_time=60000" | jq -r '.environment.POD_NAME'
 
 
 
@@ -305,9 +327,11 @@ sys	0m0.024s
 
 ---
 
-"In the original NGINX Ingress annotation, we had proxy-read-timeout, proxy-send-timeout, etc. set to 590 seconds.
-By default, most ingress controllers timeout much faster (often 15-60 seconds). Here I'm asking the backend to artificially delay its response by 60 seconds using ?echo_time=60000.
-Watch the real time — the request takes a full minute, yet we still get 200 OK and the correct pod name. This respects to the backendRequest: 590s setting in our HTTPRoute, which replaced the old NGINX proxy timeouts."
+"In the original NGINX Ingress annotation, we had `proxy-read-timeout, proxy-send-timeout`, etc. set to `590 seconds`.
+
+By default, most ingress controllers timeout much faster (often 15-60 seconds). Here I'm asking the backend to artificially delay its response by 60 seconds using `?echo_time=60000`.
+
+***Watch the real time*** — the request takes a full minute, yet we still get 200 OK and the correct pod name. This respects to the `backendRequest: 590s` setting in our HTTPRoute, which replaced the old NGINX proxy timeouts."
 
 ---
 
@@ -342,10 +366,10 @@ Then run this command:
     echo "=== Keep-Alive Stress Test (200 requests, concurrency 20) ==="
     hey -n 200 -c 20 \
       -host "app.example.com" \
-      http://$GATEWAY_EXTERNAL_IP/
+      https://$GATEWAY_EXTERNAL_IP/
 
     echo "=== Keep-Alive Disabled Stress Test (200 requests, concurrency 20) ==="
-    hey -n 200 -c 20 -host "app.example.com" --disable-keepalive http://$GATEWAY_EXTERNAL_IP/
+    hey -n 200 -c 20 -host "app.example.com" --disable-keepalive https://$GATEWAY_EXTERNAL_IP/
 
 
 <details>
@@ -485,15 +509,11 @@ This replaces the original NGINX annotations:
 #### 1. Delete app, service, serviceAccount, HTTPRoute and Gateway
 
   ```
-  NS=uc1-custom
-  kubectl delete ServiceAccount uc1-backend -n $NS 
-  kubectl delete service uc1-backend -n $NS
-  kubectl delete deployment uc1-backend -n $NS
-  kubectl delete gateway keepalive-timeout-gateway -n default
-  kubectl delete HTTPRoute keepalive-timeout-route -n $NS
-  kubectl delete clienttrafficpolicies client-keepalive-policy -n default
-  kubectl delete backendtrafficpolicies backend-timeout-policy -n $NS
-  kubectl delete ns $NS
+  kubectl delete gateway keepalive-timeout-gateway -n default --ignore-not-found
+  kubectl delete clienttrafficpolicy client-keepalive-policy -n default --ignore-not-found
+  kubectl delete backendtrafficpolicy backend-timeout-policy -n uc1-custom --ignore-not-found
+  kubectl delete httproute keepalive-timeout-route -n uc1-custom --ignore-not-found
+  kubectl delete namespace uc1-custom --ignore-not-found
   ```
 
 ===

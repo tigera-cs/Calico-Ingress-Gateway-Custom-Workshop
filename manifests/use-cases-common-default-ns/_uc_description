@@ -47,7 +47,6 @@ https://github.com/tigera-cs/Calico-Ingress-Gateway-Instructor-Led-Workshop/tree
 
 # ingress2gayetway tool
 https://github.com/kubernetes-sigs/ingress2gateway
-https://github.com/kubernetes-sigs/ingress2gateway/blob/main/pkg/i2gw/providers/ingressnginx/README.md # <-- new support
 
 #  Envoy Gateway documentation
 https://gateway.envoyproxy.io/docs/install/migrating-to-envoy/

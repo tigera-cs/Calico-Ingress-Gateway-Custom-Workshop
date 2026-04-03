@@ -11,7 +11,11 @@ echo " === Test 2: with certificate ==="
 echo " === Generating traffic to Host www.example.com .... (`date`) === "
 sleep 5 
 
-curl -v -HHost:www.example.com --resolve "www.example.com:443:${GW_SNI_IP}" \
+#curl -v -HHost:www.example.com --resolve "www.example.com:443:${GW_SNI_IP}" \
+#--cacert example.com.crt https://www.example.com/get
+
+# For AKS env use this
+curl -v -HHost:www.example.com --resolve "www.example.com:443:${GATEWAY_SNI_DEMO}" \
 --cacert example.com.crt https://www.example.com/get
 
 echo ""

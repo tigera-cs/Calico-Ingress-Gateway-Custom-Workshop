@@ -55,28 +55,28 @@ annotations:
 
 
 ### Diagram
-
-+-------------------------------------------------------------+
-|                      Kubernetes Cluster                     |
-|                                                             |
-|  +------------------+          +---------------------+      |
-|  |   default NS     |          |    uc2-custom NS    |      |
-|  |                  |          |                     |      |
-|  |  [Gateway]       |<-------->|  [HTTPRoute]        |      |
-|  |   sticky-        |   allowedRoutes    |           |      |
-|  |  session-gateway |     + sectionName  |           |      |
-|  |                  |          |  backendRefs ->     |      |
-|  |                  |          |     [uc2-backend]   |      |
-|  |                  |          |     Deployment      |      |
-|  |                  |          |     Service         |      |
-|  +------------------+          +---------------------+      |
-|                                                             |
-|                                                             |
-+-------------------------------------------------------------+
-              ↑  HTTP Traffic                             
-              │ (with Cookie-based Sticky Sessions)                
-        External Clients 
-
+```text
+    +-------------------------------------------------------------+
+    |                      Kubernetes Cluster                     |
+    |                                                             |
+    |  +------------------+          +---------------------+      |
+    |  |   default NS     |          |    uc2-custom NS    |      |
+    |  |                  |          |                     |      |
+    |  |  [Gateway]       |<-------->|  [HTTPRoute]        |      |
+    |  |   sticky-        |   allowedRoutes    |           |      |
+    |  |  session-gateway |     + sectionName  |           |      |
+    |  |                  |          |  backendRefs ->     |      |
+    |  |                  |          |     [uc2-backend]   |      |
+    |  |                  |          |     Deployment      |      |
+    |  |                  |          |     Service         |      |
+    |  +------------------+          +---------------------+      |
+    |                                                             |
+    |                                                             |
+    +-------------------------------------------------------------+
+                  ↑  HTTP / HTTPS Traffic                             
+                  │ (with Cookie-based Sticky Sessions)                
+            External Clients 
+```
 ---
 
 **Key Points**:
@@ -88,7 +88,18 @@ annotations:
 
 ### Demo
 
-#### 1. Create a deployment named `Backend` which we will use to test sticky session / session persistence. The deployment will have 4 replicas.
+#### 1. Generate certificate
+  ```
+  openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 \
+    -subj '/CN=terminate.example.com/O=Example Inc.' \
+    -keyout server.key -out server.crt
+
+  kubectl create secret tls terminate-example-tls-cert \
+    --key=server.key --cert=server.crt
+
+  ```
+
+#### 2. Create a deployment named `Backend` which we will use to test sticky session / session persistence. The deployment will have 4 replicas.
 
   ```
   kubectl apply -f - <<EOF
@@ -152,21 +163,25 @@ annotations:
   EOF
   ```
 
-#### 2. Create a Gateway resource using the "tigera-gateway-class"
+#### 3. Create a Gateway resource using the "tigera-gateway-class"
 
   ```
-  kubectl apply -f - <<EOF
   apiVersion: gateway.networking.k8s.io/v1
   kind: Gateway
   metadata:
-    name: sticky-session-gateway
+    name: sticky-gateway
     namespace: default
   spec:
     gatewayClassName: tigera-gateway-class
     listeners:
-    - name: uc2-http
-      protocol: HTTP
-      port: 80
+    - name: uc2-https
+      protocol: HTTPS
+      port: 443
+      hostname: "sticky.example.com"
+      tls:
+        mode: Terminate
+        certificateRefs:
+        - name: app-example-tls-cert
       allowedRoutes:
         namespaces:
           from: All
@@ -174,7 +189,7 @@ annotations:
   ```
 
 
-#### 3. Create the HTTPRoute and Traffic Policy
+#### 4. Create the HTTPRoute and Traffic Policy
   ```
   kubectl apply -f - <<EOF
   apiVersion: gateway.envoyproxy.io/v1alpha1
@@ -183,16 +198,16 @@ annotations:
     name: uc2-custom-session-affinity
     namespace: uc2-custom
   spec:
-    targetRef:
-      group: gateway.networking.k8s.io
+    targetRefs:      # Note: Plural 'targetRefs' is the standard for recent Envoy Gateway versions
+    - group: gateway.networking.k8s.io
       kind: HTTPRoute
-      name: uc2-custom
+      name: sticky-route # Must match the name of your HTTPRoute
     loadBalancer:
       type: ConsistentHash
       consistentHash:
         type: Cookie
         cookie:
-          name: route
+          name: "route-cookie"
           attributes:
             path: /
             sameSite: Lax
@@ -201,40 +216,36 @@ annotations:
   apiVersion: gateway.networking.k8s.io/v1
   kind: HTTPRoute
   metadata:
-    name: sticky-session-route
+    name: sticky-route
     namespace: uc2-custom
   spec:
     parentRefs:
-    - name: sticky-session-gateway
+    - name: sticky-gateway
       namespace: default
-      sectionName: uc2-http
+      sectionName: uc2-https
     hostnames:
-    - "app.example.com"
+    - "sticky.example.com"
     rules:
-    - matches:
-      - path:
-          type: PathPrefix
-          value: /
-      backendRefs:
+    - backendRefs:
       - name: uc2-backend
         port: 3000
   EOF
   ```
 
-#### 4. Wait for 30 seconds to allow services and gateway to be ready
+#### 5. Wait for 30 seconds to allow services and gateway to be ready
 
   ```
   sleep 30
   ```
 
-#### 5. Retrieve the external IP of the gateway
+#### 6. Retrieve the external IP of the gateway
 
   ```
   export GATEWAY_EXTERNAL_IP=$(kubectl get gateway/sticky-session-gateway -o jsonpath='{.status.addresses[0].value}')
   echo "GATEWAY_EXTERNAL_IP is: $GATEWAY_EXTERNAL_IP"
   ```
 
-### 6. Test
+### 7. Test
 
 ## sticky session
 
@@ -245,21 +256,26 @@ annotations:
 
 **Test Command** (to verify stickiness):
   ```
-  # 1. Single request - observe POD_NAME and cookie
-  curl -s -H "Host: app.example.com" \
-    --cookie-jar cookies.txt \
-    http://$GATEWAY_EXTERNAL_IP/ \
-    | jq -r '.environment.POD_NAME'
+  # Step 1: Testing initial connectivity (Raw Header Response)...
+  curl -k -s -I --resolve sticky.example.com:443:$GATEWAY_IP https://sticky.example.com/
   
   sleep 5
+  
+  # Step 2: Getting initial Hash Cookie...
+  # Get the cookie header
+  SET_COOKIE=$(curl -k -s -I --resolve sticky.example.com:443:$GATEWAY_IP https://sticky.example.com/ | grep -i "set-cookie")
 
-  # 2. Run multiple times - POD_NAME should stay the same (sticky session)
-  for i in {1..5}; do
-    echo "Request $i:"
-    curl -s -H "Host: app.example.com" \
-      --cookie cookies.txt \
-      http://$GATEWAY_EXTERNAL_IP \
-      | jq -r '.environment.POD_NAME'
+  # Get the pod name for the script logic
+  FIRST_POD=$(curl -k -s -c $COOKIE_JAR --resolve sticky.example.com:443:$GATEWAY_IP https://sticky.example.com/ | jq -r '.environment.POD_NAME')
+
+  echo "Initial Target Pod: $FIRST_POD"
+  echo "Cookie Assigned: $SET_COOKIE"
+
+  # Run multiple times - POD_NAME should stay the same (sticky session)
+  for i in {1..10}; do
+    NEXT_POD=$(curl -k -s -b $COOKIE_JAR --resolve sticky.example.com:443:$GATEWAY_IP \
+      https://sticky.example.com/ | jq -r '.environment.POD_NAME')
+    
   done
   ```
 
@@ -300,14 +316,11 @@ This replaces the original NGINX annotations:
 #### 1. Delete app, service, serviceAccount, HTTPRoute and Gateway
 
   ```
-  NS=uc2-custom
-  kubectl delete ServiceAccount uc2-backend -n $NS 
-  kubectl delete service uc2-backend -n $NS
-  kubectl delete deployment uc2-backend -n $NS
-  kubectl delete gateway sticky-session-gateway -n default
-  kubectl delete HTTPRoute sticky-session-route -n $NS
-  kubectl delete backendtrafficpolicies uc2-custom-session-affinity -n $NS
-  kubectl delete ns $NS 
+  kubectl delete gateway sticky-gateway -n default --ignore-not-found
+  kubectl delete clienttrafficpolicy client-sticky-policy -n default --ignore-not-found
+  kubectl delete backendtrafficpolicy backend-sticky-policy -n uc2-custom --ignore-not-found
+  kubectl delete httproute sticky-session-route -n uc2-custom --ignore-not-found
+  kubectl delete namespace uc2-custom --ignore-not-found
   ```
 
 ===

@@ -25,7 +25,7 @@ The Calico Ingress Gateway Workshop aims to explain the kubernetes' and IngressA
 We hope you enjoyed the presentation! Feel free to download the slides:
 - [Calico Ingress Gateway - Introduction](etc/01%20-%20Calico%20Ingress%20Gateway%20-%20Introduction.pdf)
 - [Calico Ingress Gateway - Capabilities](etc/02%20%20-%20Calico%20Ingress%20Gateway%20-%20Capabilities.pdf)
-- [Calico Ingress Gateway - Migration](Migration.md)
+- [Calico Ingress Gateway - Migration Playbook](use-cases-custom/MIGRATION-PLAYBOOK.md)
 
 ---
 
@@ -123,6 +123,13 @@ The following are the basic requirements to get going.
           
         # verify
         kubectl version --client
+        
+        ## Install hey
+        # for Mac
+        brew install hey
+
+        # for linux
+        sudo snap install hey
 
     [install kubectl reference guide](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
 
@@ -151,7 +158,7 @@ The following are the basic requirements to get going.
 
 2. Clone this repository
 ```bash
-git clone https://github.com/tigera-cs/Calico-Ingress-Gateway-Instructor-Led-Workshop-xxx.git  && cd Calico-Ingress-Gateway-Instructor-Led-Workshop-xxx
+git clone https://github.com/tigera-cs/Calico-Ingress-Gateway-Custom-Workshop.git  && cd Calico-Ingress-Gateway-Custom-Workshop
 ```
 ---
 ### Lab setup

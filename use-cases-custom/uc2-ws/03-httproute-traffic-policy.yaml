@@ -1,38 +1,53 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: client-keepalive-policy
+  namespace: default
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: keepalive-timeout-gateway
+  tcpKeepalive:
+    idleTime: 750s
+    interval: 60s
+    probes: 3
+  timeout:
+    http:
+      idleTimeout: 3600s
 ---
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
-  name: uc2-custom-session-affinity
-  namespace: uc2-custom
+  name: backend-timeout-policy
+  namespace: uc1-custom
 spec:
-  targetRefs:      # Note: Plural 'targetRefs' is the standard for recent Envoy Gateway versions
+  targetRefs:
   - group: gateway.networking.k8s.io
     kind: HTTPRoute
-    name: sticky-route # Must match the name of your HTTPRoute
-  loadBalancer:
-    type: ConsistentHash
-    consistentHash:
-      type: Cookie
-      cookie:
-        name: "route-cookie" # The name of the cookie Envoy will look for
-        attributes:
-          path: /
-          sameSite: Lax
-        ttl: 14400s
+    name: keepalive-timeout-route
+
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: sticky-route
-  namespace: uc2-custom
+  name: keepalive-timeout-route
+  namespace: uc1-custom
 spec:
   parentRefs:
-  - name: sticky-gateway
+  - name: keepalive-timeout-gateway
     namespace: default
-    sectionName: uc2-https
+    # sectionName: uc1-http  <-- Remove or duplicate this to attach to HTTPS
   hostnames:
-  - "sticky.example.com"
+  - "app.example.com"
   rules:
-  - backendRefs:
-    - name: uc2-backend
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: uc1-backend
       port: 3000
+    timeouts:
+      request: 3600s
+      backendRequest: 590s
