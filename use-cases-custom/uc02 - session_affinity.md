@@ -242,7 +242,7 @@ annotations:
 #### 6. Retrieve the external IP of the gateway
 
   ```
-  export GATEWAY_EXTERNAL_IP=$(kubectl get gateway/sticky-session-gateway -o jsonpath='{.status.addresses[0].value}')
+  export GATEWAY_EXTERNAL_IP=$(kubectl get gateway/sticky-gateway -o jsonpath='{.status.addresses[0].value}')
   echo "GATEWAY_EXTERNAL_IP is: $GATEWAY_EXTERNAL_IP"
   ```
 
