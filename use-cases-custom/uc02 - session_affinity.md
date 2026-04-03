@@ -275,8 +275,8 @@ annotations:
 
   # Run multiple times - POD_NAME should stay the same (sticky session)
   for i in {1..10}; do
-    NEXT_POD=$(curl -k -s -b $COOKIE_JAR --resolve sticky.example.com:443:$GATEWAY_IP \
-      https://sticky.example.com/ | jq -r '.environment.POD_NAME')
+    curl -k -s -b $COOKIE_JAR --resolve sticky.example.com:443:$GATEWAY_IP \
+      https://sticky.example.com/ | jq -r '.environment.POD_NAME'
     
   done
   ```
