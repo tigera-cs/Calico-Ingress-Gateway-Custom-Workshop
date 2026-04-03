@@ -1,17 +1,30 @@
 #!/bin/bash
 
-export GATEWAY_TLS_DEMO=$(kubectl get gateway/tls-terminate-gateway -o jsonpath='{.status.addresses[0].value}')
-echo "GATEWAY_TLS_DEMO is: $GATEWAY_TLS_DEMO"
+export GATEWAY_IP=$(kubectl get gateway mtls-gateway -o jsonpath='{.status.addresses[0].value}')
+echo "Gateway IP: $GATEWAY_IP"
 
-export GW_TLS_IP=$(dig +short $GATEWAY_TLS_DEMO)
-echo "GW_TLS_IP is: $GW_TLS_IP"
-sleep 3 
 
+
+# Test with client cert — should succeed (optional_no_ca)
 echo ""
-echo " === Generating traffic .... (`date`) === "
-sleep 2
-curl -v -H "Host:terminate.example.com" --resolve "terminate.example.com:443:${GW_TLS_IP}" \
---cacert example.com.crt https://passthrough.example.com:6443/get
+echo " === Test mTLS Handshake + Header Check — should succeed (optional_no_ca).... (`date`) === "
+echo ""
+echo "Do you want to proceed (y/n)"
+read -r answer
+
+if [[ "$answer" =~ ^[Yy]$ ]]; then
+
+curl -v -k --resolve "terminate.example.com:443:$GATEWAY_IP" \
+  --cert client.crt --key client.key \
+  https://terminate.example.com/ | jq '.request.headers | with_entries(select(.key | startswith("x-")))'
+
+else
+    echo "❌ Operation cancelled by user."
+    exit 0
+fi
+
+# Expected: 200 OK, XFCC header
+
 
 echo ""
 echo " ========================"

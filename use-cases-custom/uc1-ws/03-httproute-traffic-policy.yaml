@@ -37,7 +37,7 @@ spec:
   parentRefs:
   - name: keepalive-timeout-gateway
     namespace: default
-    sectionName: uc1-http
+    # sectionName: uc1-http  <-- Remove or duplicate this to attach to HTTPS
   hostnames:
   - "app.example.com"
   rules:

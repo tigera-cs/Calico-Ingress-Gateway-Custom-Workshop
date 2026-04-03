@@ -1,4 +1,3 @@
-# Gateway (listener HTTPS)
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -14,11 +13,14 @@ spec:
     tls:
       mode: Terminate
       certificateRefs:
-      - name: terminate-example-tls-secret   # Your server TLS secret (must exist)
+      - group: ""
+        kind: Secret
+        name: terminate-example-tls-cert
+      frontendValidation:
+        caCertificateRefs:
+        - group: ""
+          kind: Secret
+          name: client-ca-cert
     allowedRoutes:
       namespaces:
-        from: Selector
-        selector:
-          matchLabels:
-            kubernetes.io/metadata.name: uc3-custom
-
+        from: All

@@ -1,16 +1,19 @@
-# Gateway (listener)
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: sticky-session-gateway
+  name: sticky-gateway
   namespace: default
 spec:
   gatewayClassName: tigera-gateway-class
   listeners:
-  - name: uc2-http
-    protocol: HTTP
-    port: 80
+  - name: uc2-https
+    protocol: HTTPS
+    port: 443
+    hostname: "sticky.example.com"
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: app-example-tls-cert # Reusing the cert for simplicity
     allowedRoutes:
       namespaces:
         from: All
-

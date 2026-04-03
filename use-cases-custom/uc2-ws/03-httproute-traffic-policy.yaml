@@ -5,16 +5,16 @@ metadata:
   name: uc2-custom-session-affinity
   namespace: uc2-custom
 spec:
-  targetRef:
-    group: gateway.networking.k8s.io
+  targetRefs:      # Note: Plural 'targetRefs' is the standard for recent Envoy Gateway versions
+  - group: gateway.networking.k8s.io
     kind: HTTPRoute
-    name: uc2-custom
+    name: sticky-route # Must match the name of your HTTPRoute
   loadBalancer:
     type: ConsistentHash
     consistentHash:
       type: Cookie
       cookie:
-        name: route
+        name: "route-cookie" # The name of the cookie Envoy will look for
         attributes:
           path: /
           sameSite: Lax
@@ -23,20 +23,16 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: sticky-session-route
+  name: sticky-route
   namespace: uc2-custom
 spec:
   parentRefs:
-  - name: sticky-session-gateway
+  - name: sticky-gateway
     namespace: default
-    sectionName: uc2-http
+    sectionName: uc2-https
   hostnames:
-  - "app.example.com"
+  - "sticky.example.com"
   rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
+  - backendRefs:
     - name: uc2-backend
       port: 3000
