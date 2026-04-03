@@ -245,7 +245,7 @@ spec:
       request: 3600s
       backendRequest: 590s
 EOF
-
+```
 #### 5. Wait for 30 seconds to allow services and gateway to be ready
 
   ```
