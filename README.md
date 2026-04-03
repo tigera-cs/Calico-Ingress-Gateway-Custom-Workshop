@@ -57,7 +57,7 @@ We hope you enjoyed the presentation! Feel free to download the slides:
 **Custom use cases:**
 - **[UC01 - Timeout & KeepAlive](use-cases-custom/uc01%20-%20timeout-keepalive.md)**  
 - **[UC02 - Session Affinity](use-cases-custom/uc02%20-%20session_affinity.md)**  
-- **[UC03 - mTLS Termination with Header](use-cases-custom/uc03%20-%20mtls_with_ca_cert_forwarding.md)**
+- **[UC03 - mTLS Termination ca cert forwarding](use-cases-custom/uc03%20-%20mtls_with_ca_cert_forwarding.md)**
 
 **Common use cases:**
 
