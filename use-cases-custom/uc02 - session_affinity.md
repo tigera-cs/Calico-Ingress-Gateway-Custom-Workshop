@@ -242,8 +242,9 @@ annotations:
 #### 6. Retrieve the external IP of the gateway
 
   ```
-  export GATEWAY_EXTERNAL_IP=$(kubectl get gateway/sticky-gateway -o jsonpath='{.status.addresses[0].value}')
-  echo "GATEWAY_EXTERNAL_IP is: $GATEWAY_EXTERNAL_IP"
+  export GATEWAY_IP=$(kubectl get gateway/sticky-gateway -o jsonpath='{.status.addresses[0].value}')
+  COOKIE_JAR="consistent_hash_cookies.txt"
+  echo "GATEWAY_IP: $GATEWAY_IP"
   ```
 
 ### 7. Test
@@ -258,23 +259,23 @@ annotations:
 **Test Command** (to verify stickiness):
   ```
   # Step 1: Testing initial connectivity (Raw Header Response)...
-  curl -k -s -I --resolve sticky.example.com:443:$GATEWAY_EXTERNAL_IP https://sticky.example.com/
+  curl -k -s -I --resolve sticky.example.com:443:$GATEWAY_IP https://sticky.example.com/
   
   sleep 5
   
   # Step 2: Getting initial Hash Cookie...
   # Get the cookie header
-  SET_COOKIE=$(curl -k -s -I --resolve sticky.example.com:443:$GATEWAY_EXTERNAL_IP https://sticky.example.com/ | grep -i "set-cookie")
+  SET_COOKIE=$(curl -k -s -I --resolve sticky.example.com:443:$GATEWAY_IP https://sticky.example.com/ | grep -i "set-cookie")
 
   # Get the pod name for the script logic
-  FIRST_POD=$(curl -k -s -c $COOKIE_JAR --resolve sticky.example.com:443:$GATEWAY_EXTERNAL_IP https://sticky.example.com/ | jq -r '.environment.POD_NAME')
+  FIRST_POD=$(curl -k -s -c $COOKIE_JAR --resolve sticky.example.com:443:$GATEWAY_IP https://sticky.example.com/ | jq -r '.environment.POD_NAME')
 
   echo "Initial Target Pod: $FIRST_POD"
   echo "Cookie Assigned: $SET_COOKIE"
 
   # Run multiple times - POD_NAME should stay the same (sticky session)
   for i in {1..10}; do
-    NEXT_POD=$(curl -k -s -b $COOKIE_JAR --resolve sticky.example.com:443:$GATEWAY_EXTERNAL_IP \
+    NEXT_POD=$(curl -k -s -b $COOKIE_JAR --resolve sticky.example.com:443:$GATEWAY_IP \
       https://sticky.example.com/ | jq -r '.environment.POD_NAME')
     
   done
