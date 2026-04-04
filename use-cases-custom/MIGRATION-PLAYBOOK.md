@@ -40,12 +40,6 @@ Your NGINX Ingress controller will resume serving traffic immediately.
 - **Annotations converted:** 50/52 (96%)
 
 ### What Needs Manual Attention
-| Annotation | Value | Reason | Guidance |
-|-----------|-------|--------|----------|
-| `nginx.ingress.kubernetes.io/server-snippet` | `location /health {
-return 200 'ok';
-access_log off;
-}` | These NGINX configuration directives could not be automatically converted. | Recommended workaround (verify manually): Use EnvoyPatchPolicy to apply equivalent Envoy configuration. Test thoroughly in a non-production environment before applying. |
 
 ### Unrecognized Annotations
 The following NGINX annotations were not recognized by the converter:
