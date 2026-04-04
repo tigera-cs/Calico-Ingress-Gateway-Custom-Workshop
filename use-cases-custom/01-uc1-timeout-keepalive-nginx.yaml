@@ -1,8 +1,4 @@
 ## Handler timeouts & body-size
-
-## Unrecognized Annotations
-# The following NGINX annotations were not recognized by the converter:
-# nginx.ingress.kubernetes.io/proxy-next-upstream-timeout
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -11,7 +7,7 @@ metadata:
     keep-alive-requests: "1000000"
     nginx.ingress.kubernetes.io/proxy-body-size: "110m"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "590"
-    nginx.ingress.kubernetes.io/proxy-next-upstream-timeout: "590"  # ← Not converted by Seth
+    nginx.ingress.kubernetes.io/proxy-next-upstream-timeout: "590"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "590"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "590"
     proxy-connect-timeout: "3600"

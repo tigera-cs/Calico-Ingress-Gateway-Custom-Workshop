@@ -1,8 +1,4 @@
-## Handler 
-
-## Unrecognized Annotations
-# The following NGINX annotations were not recognized by the converter:
-# nginx.ingress.kubernetes.io/proxy-next-upstream-timeout
+## Handler  auth-tls
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
