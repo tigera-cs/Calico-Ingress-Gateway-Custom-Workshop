@@ -295,7 +295,7 @@ kubectl get gateway,httproute --all-namespaces
 ### Rollback
 Your original resources are backed up. To undo the cleanup:
 ```bash
-kubectl apply -f /Users/seth/bz/bz-macos-test/output/backup/ingresses/
+kubectl apply -f /Users/djsth/bz/bz-macos-test/output/backup/ingresses/
 ```
 
 ---
