@@ -317,7 +317,7 @@ possible with Ingress:
 ### Observability
 
 > If using Calico/Tigera: L7 visibility is built in via ApplicationLayer
-> Envoy Gateway metrics: https://gateway.envoyproxy.io/docs/tasks/observability/
+> Envoy Gateway metrics
 
 ---
 
