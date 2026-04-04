@@ -69,8 +69,8 @@ We hope you enjoyed the presentation! Feel free to download the slides:
 - [Advanced TCP routing](use-cases-common/06%20-%20tcp_route.md)
 - [TLS Passthrough](use-cases-common/07%20-%20tls_passthrough.md)
 - [Security routing based on SNI](use-cases-common/08%20-%20sni_based_routing.md)
-- [TLS termination for TCP traffic (SSL Offload)](use-cases-common/12%20-%20ssl_offload_termination.md)
-- [Migration from IngressAPI (NGINX) to GatewayAPI(Calico Ingress Gateway)](use-cases-common/11%20-%20NGINX_Migration_with_tool.md)
+- [TLS termination for TCP traffic (SSL Offload)](use-cases-common/10%20-%20ssl_offload_termination.md)
+- [Migration from IngressAPI (NGINX) to GatewayAPI(Calico Ingress Gateway)](use-cases-common/09%20-%20NGINX_Migration_with_tool.md)
 
 ---
 
