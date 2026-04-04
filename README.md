@@ -7,6 +7,7 @@
     - [Welcome!](#welcome)
     - [Overview](#overview)
     - [Diagram](#diagram)
+    - [Diagram](#diagram-1)
     - [Before you begin...](#before-you-begin)
     - [Lab Topology](#lab-topology)
     - [Prerequisites](#prerequisites)
@@ -58,6 +59,10 @@ We hope you enjoyed the presentation! Feel free to download the slides:
 - **[UC01 - Timeout & KeepAlive](use-cases-custom/uc01%20-%20timeout-keepalive.md)**  
 - **[UC02 - Session Affinity](use-cases-custom/uc02%20-%20session_affinity.md)**  
 - **[UC03 - mTLS Termination ca cert forwarding](use-cases-custom/uc03%20-%20mtls_with_ca_cert_forwarding.md)**
+
+### Diagram
+
+![Custom use case Diagram](etc/custom_use_cases_diagram.png)
 
 **Common use cases:**
 
