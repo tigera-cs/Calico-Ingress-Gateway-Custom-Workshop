@@ -1,10 +1,13 @@
 #!/bin/bash
-echo "=== Cleaning up UC1 (Keep-Alive + Long Timeout) ==="
+echo "=== Cleaning up UC3 (mTLS) ==="
 
-kubectl delete gateway keepalive-timeout-gateway -n default --ignore-not-found
-kubectl delete clienttrafficpolicy client-keepalive-policy -n default --ignore-not-found
-kubectl delete backendtrafficpolicy backend-timeout-policy -n uc1-custom --ignore-not-found
-kubectl delete httproute keepalive-timeout-route -n uc1-custom --ignore-not-found
-kubectl delete namespace uc1-custom --ignore-not-found
+kubectl delete gateway mtls-gateway -n default --ignore-not-found
+kubectl delete clienttrafficpolicy mtls-optional-policy -n default --ignore-not-found
+kubectl delete httproute mtls-route -n uc3-custom --ignore-not-found
+kubectl delete namespace uc3-custom --ignore-not-found
 
-echo "UC1 cleanup completed."
+# Optional: Clean certificates
+kubectl delete secret terminate-example-tls-cert -n default --ignore-not-found
+kubectl delete configmap client-ca-cert -n default --ignore-not-found
+
+echo "UC3 cleanup completed."

@@ -1,27 +1,19 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: keepalive-timeout-gateway
+  name: mtls-gateway
   namespace: default
 spec:
   gatewayClassName: tigera-gateway-class
   listeners:
-  - name: uc1-http
-    protocol: HTTP
-    port: 80
-    allowedRoutes:
-      namespaces:
-        from: All
-  - name: uc1-https
+  - name: https
     protocol: HTTPS
     port: 443
-    hostname: "app.example.com"
+    hostname: terminate.example.com
     tls:
       mode: Terminate
       certificateRefs:
-      - name: app-example-tls-cert # Matches the secret name
+      - name: terminate-example-tls-cert
     allowedRoutes:
       namespaces:
         from: All
-
-
