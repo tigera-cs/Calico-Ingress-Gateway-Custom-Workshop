@@ -22,12 +22,7 @@ We are using a dedicated Gateway and namespace (`uc2-custom`) to keep this examp
 - **E-Commerce Shopping Carts**: Ensures that items added to a cart are consistently available across pages without requiring frequent database lookups.
 - **Online Gaming or Collaboration Tools**: Maintains game state or live document sessions, avoiding interruptions caused by switching backend instances.
 
-## High Level Tasks
 
-- Create Namespace + Backend (Deployment + Service) in `uc2-custom`
-- Create dedicated Gateway in `default` namespace
-- Create ClientTrafficPolicy (optional)
-- Create HTTPRoute with `sessionPersistence` in `uc2-custom`
 
 ### Original NGINX Ingress Annotations
 In the original NGINX Ingress resource we used the following annotations:
@@ -45,11 +40,9 @@ annotations:
 
 ### High Level Tasks
 
-- Create Namespace `uc2-custom`
-- Deploy the backend application (Deployment + Service) in `uc2-custom`
+- Create Namespace + Backend (Deployment + Service) in `uc2-custom`
 - Create Gateway resource in `default` namespace
-- Create ClientTrafficPolicy (in `default`)
-- Create HTTPRoute + BackendTrafficPolicy in `uc2-custom`
+- Create HTTPRoute + BackendTrafficPolicy with `ConsistentHash` in `uc2-custom`
 
 ---
 
@@ -294,11 +287,10 @@ annotations:
 ### Configuration Used
 This sticky session behavior was achieved using the native Gateway API field:
 
-- `HTTPRoute.spec.rules[].backendRefs[].sessionPersistence`
+- `BackendTrafficPolicy.spec.loadBalancer.ConsistentHash`
 - `type: Cookie`
 - `sessionName: route`
 - `absoluteTimeout: 14400s (4 hours)`
-- `cookieConfig.lifetimeType: Permanent`
 
 
 This replaces the original NGINX annotations:

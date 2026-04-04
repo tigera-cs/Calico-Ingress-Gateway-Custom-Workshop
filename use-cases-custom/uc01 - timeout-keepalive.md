@@ -93,7 +93,7 @@ annotations:
     --key=app-example-tls.key \
     --cert=app-example-tls.crt
   ```
-#### 2. Create a deployment named `Backend` which we will use to test sticky session / session persistence. The deployment will have 4 replicas.
+#### 2. Create a deployment named `Backend` which we will use to test long timeout / keep-alive session. The deployment will have 4 replicas.
 
   ```
   kubectl apply -f - <<EOF

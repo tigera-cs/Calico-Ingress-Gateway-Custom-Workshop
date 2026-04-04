@@ -250,11 +250,11 @@ curl -v -k --resolve "terminate.example.com:443:$GATEWAY_IP" \
 ### Key Observations
 
 - **Handshake Verification**: The Gateway successfully performs a full mTLS handshake.
-- **Header Injection**: The `ClientTrafficPolicy` successfully injects `x-client-cert-present: true` into the request received by the backend.
+- **Header Injection**: The `ClientTrafficPolicy` successfully injects `x-Forwarded-Client-Cert` into the request received by the backend.
 - **Protocol Security**: Identity verification is handled entirely by the Calico Ingress (Envoy), offloading complex cryptographic validation from the application code.
 
 ### Configuration Used
-- **Gateway `frontendValidation`**: Establishes the trust anchor by referencing the `client-ca-cert` secret.
+- **ClientTrafficPolicy & Gateway `tls.clientValidation`**: Establishes the trust anchor by referencing the `client-ca-cert` secret.
 - **ClientTrafficPolicy `RequestHeaderModifier`**: Replaces custom NGINX snippets with a declarative filter to signal mTLS status to upstreams.
 
 ---

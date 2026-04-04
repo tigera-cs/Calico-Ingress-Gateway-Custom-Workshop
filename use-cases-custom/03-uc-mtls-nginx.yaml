@@ -5,7 +5,7 @@ metadata:
   name: uc3-custom
   namespace: uc3-custom
   annotations:
-    external-dns.alpha.kubernetes.io/target: blue-service.canadacentral.aks.prod.c1.rbc.com
+    external-dns.alpha.kubernetes.io/target: xyz-service.canadacentral.aks.dev.DJcorp.com
     nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream: "true"
     nginx.ingress.kubernetes.io/auth-tls-secret: ingress-mtls/ca-secret
     nginx.ingress.kubernetes.io/auth-tls-verify-client: optional_no_ca
