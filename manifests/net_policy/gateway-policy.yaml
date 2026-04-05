@@ -1,0 +1,53 @@
+apiVersion: projectcalico.org/v3
+kind: NetworkPolicy
+metadata:
+  name: default.tigera-gateway-apiserver-access
+  namespace: tigera-gateway
+spec:
+  tier: default
+  order: 1
+  selector: >-
+    app == "certgen" || app.kubernetes.io/instance == "tigera-gateway-api" ||
+    app.kubernetes.io/component == "proxy"
+  serviceAccountSelector: ''
+  ingress:
+    - action: Allow
+      protocol: TCP
+      source:
+        selector: app.kubernetes.io/component == "proxy"
+      destination:
+        selector: app.kubernetes.io/instance == "tigera-gateway-api"
+        ports:
+          - '18000'
+    - action: Allow
+      protocol: TCP
+      source:
+        selector: component == "apiserver"
+        namespaceSelector: kubernetes.io/metadata.name == "default"
+      destination:
+        ports:
+          - '9443'
+    - action: Allow
+      source: {}
+      destination: {}
+  egress:
+    - action: Allow
+      protocol: TCP
+      source: {}
+      destination:
+        services:
+          name: kubernetes
+          namespace: default
+    - action: Allow
+      protocol: TCP
+      source: {}
+      destination:
+        selector: app.kubernetes.io/instance == "tigera-gateway-api"
+        ports:
+          - '18000'
+    - action: Allow 
+      source: {}
+      destination: {}
+  types:
+    - Ingress
+    - Egress

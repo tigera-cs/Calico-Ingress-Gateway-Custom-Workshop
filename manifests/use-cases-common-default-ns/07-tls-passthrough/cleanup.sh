@@ -1,8 +1,8 @@
 #!/bin/bash
 
-kubectl delete service passthrough-echoserver
-kubectl delete deployment passthrough-echoserver
-kubectl delete gateway tls-passthrough-gateway
-kubectl delete TLSRoute tls-passthrough
-kubectl delete secret server-certs
+kubectl delete service backend-sni
+kubectl delete deployment backend-sni
+kubectl delete gateway sni-gateway
+kubectl delete HTTPRoute backend-sni
+kubectl delete secret example-cert sample-cert
 
