@@ -9,7 +9,7 @@ kubectl delete configmap client-ca-cert -n default --ignore-not-found
 # Generate certificates in current directory
 echo "Generating certificates..."
 
-# 1. CA Certificate
+  # 1. Create a root CA Certificate to sign the client certificate:
 openssl req -x509 -newkey rsa:2048 -keyout ca.key -out ca.crt \
   -days 365 -nodes -subj "/CN=Test CA" 2>/dev/null
 
