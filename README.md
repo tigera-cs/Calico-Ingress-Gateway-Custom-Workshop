@@ -15,6 +15,7 @@
     - [Lab setup](#lab-setup)
       - [Enable Calico Ingress Gateway](#enable-calico-ingress-gateway)
       - [Verify Gateway API Resource Availability](#verify-gateway-api-resource-availability)
+    - [Tigera Conversion tool](#tigera-conversion-tool)
 
 
 ### Welcome!
@@ -152,14 +153,6 @@ The following are the basic requirements to get going.
 
     [autocomplete configuration reference guide](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#enable-shell-autocompletion)
 
-    </details>
-    <details>
-    <summary><code>ingress2gateway</code> is installed on your local host</summary>
-
-        git clone https://github.com/kubernetes-sigs/ingress2gateway.git && cd ingress2gateway
-        make build
-        ./ingress2gateway version
-    </details>
 
 2. Clone this repository
 ```bash
@@ -231,5 +224,9 @@ Expected output:
   ```
 
 ---
+### Tigera Conversion tool 
 
+[NGINX Ingress to Gateway API Converter Tool](https://tigera.github.io/ing2gw/)
+
+---
 > **Congratulations! You have completed `Introduction & lab setup`!**
